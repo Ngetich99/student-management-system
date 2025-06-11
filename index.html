@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -32,51 +31,82 @@
       height: 50px;
       object-fit: cover;
     }
+    #mainContent {
+      display: none;
+    }
   </style>
 </head>
 <body>
-  <h1>Student Management System</h1>
-  <input type="text" id="searchInput" placeholder="Search by name, email or degree" oninput="searchStudents()" />
-  <h2>Add / Update Student</h2>
-  <form id="studentForm">
-    <input type="hidden" id="studentId" />
-    <input type="text" id="name" placeholder="Name" required />
-    <input type="number" id="age" placeholder="Age" required />
-    <input type="text" id="grade" placeholder="Grade" required />
-    <input type="text" id="degree" placeholder="Degree" required />
-    <input type="email" id="email" placeholder="Email" required />
-    <input type="file" id="photo" accept="image/*" required />
-    <input type="text" id="address" placeholder="Home Address" required />
-    <input type="text" id="guardian" placeholder="Guardian" required />
-    <input type="text" id="school" placeholder="School" required />
-    <button type="submit">Submit</button>
-  </form>
-  <table id="studentTable">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Name</th>
-        <th>Age</th>
-        <th>Grade</th>
-        <th>Degree</th>
-        <th>Email</th>
-        <th>Photo</th>
-        <th>Address</th>
-        <th>Guardian</th>
-        <th>School</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <div id="loginForm">
+    <h2>Login</h2>
+    <input type="text" id="username" placeholder="Username" required />
+    <input type="password" id="password" placeholder="Password" required />
+    <button onclick="login()">Login</button>
+    <p id="loginError" style="color: red;"></p>
+  </div>
+
+  <div id="mainContent">
+    <h1>Student Management System</h1>
+    <input type="text" id="searchInput" placeholder="Search by name, email or degree" oninput="searchStudents()" />
+
+    <h2>Add / Update Student</h2>
+    <form id="studentForm">
+      <input type="hidden" id="studentId" />
+      <input type="text" id="name" placeholder="Name" required />
+      <input type="number" id="age" placeholder="Age" required />
+      <input type="text" id="grade" placeholder="Grade" required />
+      <input type="text" id="degree" placeholder="Degree" required />
+      <input type="email" id="email" placeholder="Email" required />
+      <input type="file" id="photo" accept="image/*" required />
+      <input type="text" id="address" placeholder="Home Address" required />
+      <input type="text" id="guardian" placeholder="Guardian" required />
+      <input type="text" id="school" placeholder="School" required />
+      <button type="submit">Submit</button>
+    </form>
+
+    <table id="studentTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Age</th>
+          <th>Grade</th>
+          <th>Degree</th>
+          <th>Email</th>
+          <th>Photo</th>
+          <th>Address</th>
+          <th>Guardian</th>
+          <th>School</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
   <script>
+    function login() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      if (username === 'ngetich' && password === 'Taita@254') {
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+      } else {
+        document.getElementById('loginError').textContent = 'Invalid credentials';
+      }
+    }
+
     let students = JSON.parse(localStorage.getItem('students')) || [];
     let idCounter = students.length ? Math.max(...students.map(s => Number(s.id))) + 1 : 1;
+
     displayStudents();
+
     document.getElementById('studentForm').addEventListener('submit', function(e) {
       e.preventDefault();
+
       const reader = new FileReader();
       const photoFile = document.getElementById('photo').files[0];
+
       reader.onload = function(event) {
         const student = {
           id: document.getElementById('studentId').value || idCounter++,
@@ -90,20 +120,24 @@
           guardian: document.getElementById('guardian').value,
           school: document.getElementById('school').value
         };
+
         const existingIndex = students.findIndex(s => s.id == student.id);
         if (existingIndex >= 0) {
           students[existingIndex] = student;
         } else {
           students.push(student);
         }
+
         localStorage.setItem('students', JSON.stringify(students));
         clearForm();
         displayStudents();
       };
+
       if (photoFile) {
         reader.readAsDataURL(photoFile);
       }
     });
+
     function displayStudents(filtered = students) {
       const tbody = document.querySelector('#studentTable tbody');
       tbody.innerHTML = '';
@@ -128,6 +162,7 @@
         tbody.appendChild(row);
       });
     }
+
     function editStudent(id) {
       const student = students.find(s => s.id == id);
       document.getElementById('studentId').value = student.id;
@@ -140,15 +175,18 @@
       document.getElementById('guardian').value = student.guardian;
       document.getElementById('school').value = student.school;
     }
+
     function deleteStudent(id) {
       students = students.filter(s => s.id != id);
       localStorage.setItem('students', JSON.stringify(students));
       displayStudents();
     }
+
     function clearForm() {
       document.getElementById('studentForm').reset();
       document.getElementById('studentId').value = '';
     }
+
     function searchStudents() {
       const query = document.getElementById('searchInput').value.toLowerCase();
       const filtered = students.filter(student =>
