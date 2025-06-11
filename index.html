@@ -6,33 +6,75 @@
   <title>Student Management System</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f0f8ff;
+      color: #333;
       margin: 20px;
     }
-    input, button {
+    input, button, select {
       margin: 5px;
-      padding: 5px;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+    button {
+      background-color: #007acc;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #005f99;
     }
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 20px;
+      background-color: white;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
     }
     th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
+      border: 1px solid #ddd;
+      padding: 10px;
       text-align: left;
     }
     th {
-      background-color: #f4f4f4;
+      background-color: #e6f2ff;
     }
     img {
       width: 50px;
       height: 50px;
       object-fit: cover;
+      border-radius: 50%;
     }
     #mainContent {
       display: none;
+    }
+    #confirmationDialog {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border: 1px solid #ccc;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+      display: none;
+      z-index: 1000;
+    }
+    #confirmationDialog p {
+      margin-bottom: 10px;
+    }
+    h1, h2 {
+      color: #005f99;
+    }
+    #loginForm, #studentForm, #studentTable, #searchInput, #logoutButton {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      margin-bottom: 20px;
     }
   </style>
 </head>
@@ -47,9 +89,10 @@
 
   <div id="mainContent">
     <h1>Student Management System</h1>
+    <button onclick="logout()" id="logoutButton">Logout</button>
     <input type="text" id="searchInput" placeholder="Search by name, email or degree" oninput="searchStudents()" />
 
-    <h2>Add / Update Student</h2>
+    <h2 id="formTitle">Add / Update Student</h2>
     <form id="studentForm">
       <input type="hidden" id="studentId" />
       <input type="text" id="name" placeholder="Name" required />
@@ -84,17 +127,62 @@
     </table>
   </div>
 
+  <div id="confirmationDialog">
+    <p>Are you sure you want to delete this student?</p>
+    <button onclick="confirmDelete(true)">Yes</button>
+    <button onclick="confirmDelete(false)">No</button>
+  </div>
+
   <script>
+    const USERS = {
+      ngetich: { password: 'Taita@254', role: 'admin' },
+      mark: { password: '1234', role: 'viewer' }
+    };
+
+    const rolePermissions = { admin: true, viewer: false };
+    let sessionTimeout;
+
     function login() {
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
-      if (username === 'ngetich' && password === 'Taita@254') {
+
+      if (USERS[username] && USERS[username].password === password) {
+        const role = USERS[username].role;
+        sessionStorage.setItem('isLoggedIn', 'true');
+        sessionStorage.setItem('userRole', role);
+        sessionStorage.setItem('loggedInUser', username);
         document.getElementById('loginForm').style.display = 'none';
         document.getElementById('mainContent').style.display = 'block';
+        togglePermissions(role);
+        if (role === 'viewer') sessionTimeout = setTimeout(logout, 2 * 60 * 1000);
       } else {
         document.getElementById('loginError').textContent = 'Invalid credentials';
       }
     }
+
+    function logout() {
+      sessionStorage.clear();
+      clearTimeout(sessionTimeout);
+      location.reload();
+    }
+
+    function togglePermissions(role) {
+      const allowed = rolePermissions[role];
+      document.getElementById('studentForm').style.display = allowed ? 'block' : 'none';
+      document.querySelectorAll('#studentTable button').forEach(btn => {
+        btn.style.display = allowed ? 'inline-block' : 'none';
+      });
+    }
+
+    window.onload = function () {
+      if (sessionStorage.getItem('isLoggedIn') === 'true') {
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+        const role = sessionStorage.getItem('userRole');
+        togglePermissions(role);
+        if (role === 'viewer') sessionTimeout = setTimeout(logout, 2 * 60 * 1000);
+      }
+    };
 
     let students = JSON.parse(localStorage.getItem('students')) || [];
     let idCounter = students.length ? Math.max(...students.map(s => Number(s.id))) + 1 : 1;
@@ -103,7 +191,6 @@
 
     document.getElementById('studentForm').addEventListener('submit', function(e) {
       e.preventDefault();
-
       const reader = new FileReader();
       const photoFile = document.getElementById('photo').files[0];
 
@@ -122,43 +209,50 @@
         };
 
         const existingIndex = students.findIndex(s => s.id == student.id);
-        if (existingIndex >= 0) {
-          students[existingIndex] = student;
-        } else {
-          students.push(student);
-        }
+        if (existingIndex >= 0) students[existingIndex] = student;
+        else students.push(student);
 
         localStorage.setItem('students', JSON.stringify(students));
         clearForm();
         displayStudents();
       };
 
-      if (photoFile) {
-        reader.readAsDataURL(photoFile);
-      }
+      if (photoFile) reader.readAsDataURL(photoFile);
     });
 
     function displayStudents(filtered = students) {
       const tbody = document.querySelector('#studentTable tbody');
       tbody.innerHTML = '';
+      const role = sessionStorage.getItem('userRole');
+
       filtered.forEach(student => {
         const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${student.id}</td>
-          <td>${student.name}</td>
-          <td>${student.age}</td>
-          <td>${student.grade}</td>
-          <td>${student.degree}</td>
-          <td>${student.email}</td>
-          <td><img src="${student.photo}" /></td>
-          <td>${student.address}</td>
-          <td>${student.guardian}</td>
-          <td>${student.school}</td>
-          <td>
-            <button onclick="editStudent(${student.id})">Edit</button>
-            <button onclick="deleteStudent(${student.id})">Delete</button>
-          </td>
-        `;
+        if (role === 'viewer') {
+          row.innerHTML = `
+            <td>${student.id}</td>
+            <td>${student.name}</td>
+            <td colspan="8"></td>
+            <td>${student.school}</td>
+            <td></td>
+          `;
+        } else {
+          row.innerHTML = `
+            <td>${student.id}</td>
+            <td>${student.name}</td>
+            <td>${student.age}</td>
+            <td>${student.grade}</td>
+            <td>${student.degree}</td>
+            <td>${student.email}</td>
+            <td><img src="${student.photo}" /></td>
+            <td>${student.address}</td>
+            <td>${student.guardian}</td>
+            <td>${student.school}</td>
+            <td>
+              <button onclick="editStudent(${student.id})">Edit</button>
+              <button onclick="promptDelete(${student.id})">Delete</button>
+            </td>
+          `;
+        }
         tbody.appendChild(row);
       });
     }
@@ -176,10 +270,21 @@
       document.getElementById('school').value = student.school;
     }
 
-    function deleteStudent(id) {
-      students = students.filter(s => s.id != id);
-      localStorage.setItem('students', JSON.stringify(students));
-      displayStudents();
+    let studentToDelete = null;
+
+    function promptDelete(id) {
+      studentToDelete = id;
+      document.getElementById('confirmationDialog').style.display = 'block';
+    }
+
+    function confirmDelete(confirm) {
+      if (confirm && studentToDelete !== null) {
+        students = students.filter(s => s.id != studentToDelete);
+        localStorage.setItem('students', JSON.stringify(students));
+        displayStudents();
+      }
+      studentToDelete = null;
+      document.getElementById('confirmationDialog').style.display = 'none';
     }
 
     function clearForm() {
