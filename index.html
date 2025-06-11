@@ -155,7 +155,6 @@
       const password = document.getElementById("password").value;
       const error = document.getElementById("loginError");
 
-      // Example credentials (you can expand or modify)
       const credentials = {
         "ngetich": "Taita@254",
         "mark": "1234"
@@ -176,6 +175,12 @@
       document.getElementById("mainContent").style.display = "none";
       document.getElementById("loginForm").style.display = "block";
     }
+
+    document.getElementById("studentForm").addEventListener("submit", function(event) {
+      event.preventDefault();
+      alert("Student data submitted successfully!");
+      // Add student processing logic here if needed
+    });
   </script>
 </body>
 </html>
